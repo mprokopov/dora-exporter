@@ -1,0 +1,34 @@
+# Teams queried either from Backstage Catalog or read from the following list
+teams:
+  - name: platform
+    github_repositories:
+      - mprokopov/dora-exporter
+    jira_projects:
+      - PLATFORM
+  - name: team1
+    github_repositories:
+      - org1/team1-repo
+    jira_projects:
+      - TEAM1
+  - name: team2
+    github_repositories:
+      - org1/team2-repo
+    jira_projects:
+      - TEAM2
+
+# Used to query extra information about a commit or pull request
+github:
+  owner: org
+  token: gh_token_here
+
+server:
+  port: 8090
+
+# Backstage support
+# catalog:
+#   mode: backstage
+#   endpoint: https://backstage.com
+
+# storage:
+#   file:
+#     path: dora-exporter.prom

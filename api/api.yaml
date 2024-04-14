@@ -1,0 +1,38 @@
+openapi: "3.0.0"
+info:
+  version: "0.0.1"
+  title: "dora-exporter"
+  description: DORA metrix exporter for Prometheus
+
+paths:
+  /api/github:
+    post:
+      summary: GitHub deployment_status webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeploymentStatus"
+      responses:
+        "200":
+          description: Metrics successfully saved
+  /api/jira:
+    post:
+      summary: Jira Incident webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JiraIssue"
+      responses:
+        "200":
+          description: Metrics successfully saved
+components:
+  schemas:
+    DeploymentStatus:
+      description: The status of deployment
+      type: object
+    JiraIssue:
+      type: object
