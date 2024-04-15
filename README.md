@@ -6,7 +6,7 @@ DORA metrics prometheus compatible exporter.
 
 ## Grafana Dashboard
 
-https://grafana.com/grafana/dashboards/20889
+https://grafana.com/grafana/dashboards/20889-dora-v2/
 
 ## Installation
 
