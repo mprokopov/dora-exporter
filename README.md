@@ -109,12 +109,24 @@ dora-exporter -log debug
 ```
 
 ## GitHub Integration setup
+Dora Exporter requires information about deployments of your applications. The easiest way is to setup a organization-wide webhook. Make sure your GitHub repository shows deployments information.
 
-You need to setup webhook preferrably organization wide like this
-
+```
 https://<dora-exporter-url>/api/github
+```
+Ensure GitHub repository has information about deployments 
+![Deployments](/images/deployments.png "Deployments for application")
 
+Ensure setting up organization-wide webhook as per screenshots
+
+![Deployment Webhook Setup](/images/deployment-webhook.png "Deployment Webhook Setup")
+
+![Deployment Webhook Setup 2](/images/deployment-webhook2.png "Deployment Webhook Setup Step 2")
 ## Jira integration setup
 
 Setup webhook for Jira issues to point to:
+
+```
 https://<dora-exporter-url>/api/jira
+```
+
