@@ -4,6 +4,23 @@ DORA metrics prometheus compatible exporter.
 
 ![Grafana Dashboard Screenshot](/images/screenshot.png "Grafana Dashboard")
 
+
+## How it works
+
+dora-exporter listens to deployment events from GitHub and ticket events from Jira.
+
+### GitHub Integration
+Every successfull deployment increases counter `github_deployments_count`. Such counter sets labels: `team`, `status`, `environment`, `repo`.
+
+The `team` label can be set using manual mapping with configuration file, or by querying `Backstage` backend.
+
+Whenever GitHub deployment event received, dora-exporter does query to GitHub API to calculate a time between the first commit in the related Pull Request and deployment event.
+
+This time is added to counter `github_deployments_duration`. Such counter contains labels: 
+`team`, `status`, `environment`, `repo`.
+
+### Jira Integration
+
 ## Grafana Dashboard
 
 https://grafana.com/grafana/dashboards/20889-dora-v2/
@@ -122,6 +139,21 @@ Ensure setting up organization-wide webhook as per screenshots
 ![Deployment Webhook Setup](/images/deployment-webhook.png "Deployment Webhook Setup")
 
 ![Deployment Webhook Setup 2](/images/deployment-webhook2.png "Deployment Webhook Setup Step 2")
+
+If the integration successfull, and GitHub sends deployment signals to dora-exporter, its `/metrics` endpoint should contain `github_deployments_duration` metric.
+
+```prometheus
+# HELP github_deployments_duration The last deployments duration
+# TYPE github_deployments_duration gauge
+github_deployments_duration{environment="staging",repo="adminka-core",status="success",team="Platform"} 9.223372036854776e+09
+# HELP github_deployments_duration_sum The last deployments duration sum
+# TYPE github_deployments_duration_sum gauge
+github_deployments_duration_sum{environment="staging",repo="adminka-core",status="success",team="Platform"} 9.223372036854776e+09
+# HELP github_deployments_total The amount of successful deployments.
+# TYPE github_deployments_total counter
+github_deployments_total{environment="staging",repo="adminka-core",status="success",team="Platform"} 1
+```
+
 ## Jira integration setup
 
 Setup webhook for Jira issues to point to:
