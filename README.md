@@ -1,16 +1,20 @@
 # DORA exporter
 
-DORA metrics prometheus compatible exporter.
+DORA metrics exporter for Prometheus.
 
 ![Grafana Dashboard Screenshot](/images/screenshot.png "Grafana Dashboard")
 
-
 ## How it works
+`dora-exporter` listens to deployment events from GitHub and ticket events from Jira.
 
-dora-exporter listens to deployment events from GitHub and ticket events from Jira.
+Upon every deployment GitHub triggers the webhook and calls dora-exporter with payload containing information about deployment environment and deployed commit.  
+
+`dora-exporter` tries to calculate duration of the commit either by looking into a related PR and the first commit in this PR, otherwise it takes the deployed commit duration.
+
+The metrics about deployments count and deployments duration is enough to build DORA dashboards. Prometheus scrapes dora-exporter metrics and saves the data internally. Grafana uses Prometheus to query and build diagrams.  
 
 ### GitHub Integration
-Every successfull deployment increases counter `github_deployments_count`. Such counter sets labels: `team`, `status`, `environment`, `repo`.
+Every successfull deployment increases counter `github_deployments_count`. Such counter has labels: `team`, `status`, `environment`, `repo`.
 
 The `team` label can be set using manual mapping with configuration file, or by querying `Backstage` backend.
 
@@ -18,6 +22,23 @@ Whenever GitHub deployment event received, dora-exporter does query to GitHub AP
 
 This time is added to counter `github_deployments_duration`. Such counter contains labels: 
 `team`, `status`, `environment`, `repo`.
+
+#### Debugging integration
+
+It could prove useful to supply `-logs debug` argument and check the output. Successful call log should look like this. 
+
+```logfmt
+level=debug component=github_api call=https://api.github.com/repos/it-premium/adminka-core/git/commits/f68b7c12f90cf81adb6bae0e907693ebc435851b
+level=debug component=github_api repo=adminka-core commit_info=f68b7c12f90cf81adb6bae0e907693ebc435851b
+level=debug commit_message="chore(gems): nokogiri (#109)" pull_request_reference=found
+level=debug component=github_api call=https://api.github.com/repos/it-premium/adminka-core/pulls/109/commits
+level=debug component=github_api repo=adminka-core pull_request=109
+level=debug repo=adminka-core sha=f68b7c12f90cf81adb6bae0e907693ebc435851b PR=109 date=pr_first_commit
+level=debug commit_duration=25h33m42.887362188s
+level=debug counter=deployments_count action=inc
+level=debug counter=deployments_duration action=set value=92022.887365547
+level=info endpoint=github environment=production repository=adminka-core status=in_progress team=Platform sha=f68b7c12f90cf81adb6bae0e907693ebc435851b
+```
 
 ### Jira Integration
 
