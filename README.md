@@ -1,8 +1,26 @@
-# DORA exporter
+# DORA Exporter
 
-DORA metrics exporter for Prometheus.
+A Prometheus exporter for DORA (DevOps Research and Assessment) metrics.
 
 ![Grafana Dashboard Screenshot](/images/screenshot.png "Grafana Dashboard")
+
+## Overview
+DORA Exporter collects deployment events from GitHub and ticket events from Jira to calculate key DORA metrics. These metrics are exposed in Prometheus format and can be visualized using Grafana.
+
+## Features
+- GitHub deployment tracking
+- Jira ticket monitoring
+- Prometheus metrics export
+- Team-based metrics aggregation
+- Backstage integration
+- Persistent metrics storage
+
+## How It Works
+The exporter:
+1. Listens for GitHub deployment webhooks
+2. Calculates deployment lead time by analyzing PR and commit data
+3. Exposes metrics for Prometheus to scrape
+4. Provides data for Grafana dashboards
 
 ## How it works
 `dora-exporter` listens to deployment events from GitHub and ticket events from Jira.
@@ -14,9 +32,13 @@ Upon every deployment GitHub triggers the webhook and calls dora-exporter with p
 The metrics about deployments count and deployments duration is enough to build DORA dashboards. Prometheus scrapes dora-exporter metrics and saves the data internally. Grafana uses Prometheus to query and build diagrams.  
 
 ### GitHub Integration
-Every successfull deployment increases counter `github_deployments_count`. Such counter has labels: `team`, `status`, `environment`, `repo`.
+The exporter tracks two main metrics:
+- `github_deployments_count`: Counts successful deployments (labels: team, status, environment, repo)
+- `github_deployments_duration`: Measures lead time from first commit to deployment
 
-The `team` label can be set using manual mapping with configuration file, or by querying `Backstage` backend.
+Team attribution can be configured via:
+- Manual mapping in configuration file
+- Backstage backend integration
 
 Whenever GitHub deployment event received, dora-exporter does query to GitHub API to calculate a time between the first commit in the related Pull Request and deployment event.
 
@@ -155,7 +177,7 @@ https://<dora-exporter-url>/api/github
 Ensure GitHub repository has information about deployments 
 ![Deployments](/images/deployments.png "Deployments for application")
 
-Ensure setting up organization-wide webhook as per screenshots
+Ensure setting up organization-wide webhook as per screenshots. `Deployments` and `Deployment statuses` checkboxes should be selected.
 
 ![Deployment Webhook Setup](/images/deployment-webhook.png "Deployment Webhook Setup")
 
@@ -166,12 +188,21 @@ If the integration successfull, and GitHub sends deployment signals to dora-expo
 ```prometheus
 # HELP github_deployments_duration The last deployments duration
 # TYPE github_deployments_duration gauge
-github_deployments_duration{environment="staging",repo="adminka-core",status="success",team="Platform"} 9.223372036854776e+09
+github_deployments_duration{environment="production",repo="adminka-core",status="in_progress",team="Platform"} 92022.887365547
+github_deployments_duration{environment="production",repo="adminka-core",status="success",team="Platform"} 2677.657175116
+github_deployments_duration{environment="staging",repo="adminka-core",status="in_progress",team="Platform"} 2820.405749159
+github_deployments_duration{environment="staging",repo="adminka-core",status="success",team="Platform"} 2791.783721583
 # HELP github_deployments_duration_sum The last deployments duration sum
 # TYPE github_deployments_duration_sum gauge
-github_deployments_duration_sum{environment="staging",repo="adminka-core",status="success",team="Platform"} 9.223372036854776e+09
+github_deployments_duration_sum{environment="production",repo="adminka-core",status="in_progress",team="Platform"} 94778.17152176499
+github_deployments_duration_sum{environment="production",repo="adminka-core",status="success",team="Platform"} 5294.0982427260005
+github_deployments_duration_sum{environment="staging",repo="adminka-core",status="in_progress",team="Platform"} 2820.405749159
+github_deployments_duration_sum{environment="staging",repo="adminka-core",status="success",team="Platform"} 2791.783721583
 # HELP github_deployments_total The amount of successful deployments.
 # TYPE github_deployments_total counter
+github_deployments_total{environment="production",repo="adminka-core",status="in_progress",team="Platform"} 2
+github_deployments_total{environment="production",repo="adminka-core",status="success",team="Platform"} 2
+github_deployments_total{environment="staging",repo="adminka-core",status="in_progress",team="Platform"} 1
 github_deployments_total{environment="staging",repo="adminka-core",status="success",team="Platform"} 1
 ```
 
@@ -183,3 +214,46 @@ Setup webhook for Jira issues to point to:
 https://<dora-exporter-url>/api/jira
 ```
 
+## Quick Start
+
+### Docker Installation
+```shell
+docker run --rm \
+  -e GITHUB_TOKEN=gh_xxxxx \
+  -p 8090:8090 \
+  dora-exporter
+```
+
+### Configuration
+Specify a configuration file:
+```shell
+dora-exporter -config.file=config.yml
+```
+
+Required environment variables:
+- `GITHUB_TOKEN`: GitHub API token with repository access
+
+## Metrics Storage
+The exporter persists metrics in Prometheus format between restarts. Configure the storage location:
+
+```yaml
+storage:
+  file:
+    path: /data/prometheus.prom
+```
+
+Tip: Map this to an external volume in production environments.
+
+## Troubleshooting
+
+### Debug Mode
+Enable detailed logging:
+```shell
+dora-exporter -log debug
+```
+
+Log levels:
+- `info`: Standard operational logs
+- `debug`: Detailed debugging information
+- `warning`: Warning messages
+- `error`: Error conditions
