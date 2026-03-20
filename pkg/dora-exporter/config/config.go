@@ -25,6 +25,7 @@ type Config struct {
 	Catalog struct {
 		Mode     string
 		Endpoint string
+		Token    string
 	}
 	Teams  catalog.Teams
 	Server struct {
@@ -83,6 +84,10 @@ func (c *Config) Load(file string) *Config {
 
 	for _, team := range c.Teams {
 		level.Info(logger).Log("config", "load", "team", team.Name, "repos", len(team.Repositories), "projects", len(team.Projects))
+	}
+
+	if c.Catalog.Token == "" && os.Getenv("BACKSTAGE_TOKEN") != "" {
+		c.Catalog.Token = os.Getenv("BACKSTAGE_TOKEN")
 	}
 
 	if c.Catalog.Mode == "" {

@@ -2,8 +2,8 @@ package jira
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/go-kit/log/level"
@@ -34,8 +34,6 @@ func (issue Issue) GetDuration() float64 {
 	return time.Since(issue.Fields.Created.Time).Seconds()
 }
 
-const jiraTime = "2006-01-02T15:04:05.000-0700"
-
 type JiraTime struct {
 	time.Time
 }
@@ -50,7 +48,9 @@ type Issue struct {
 				Key  string
 			}
 		}
-		// Jira uses non-standard time for created_at
+		Teams []struct {
+			Name string `json:"value"`
+		} `json:"customfield_10792"`
 		Created JiraTime
 		Project struct {
 			Key string
@@ -61,13 +61,16 @@ type Issue struct {
 	}
 }
 
-func (jtime *JiraTime) UnmarshalJSON(b []byte) (err error) {
-	s := strings.Trim(string(b), "\"")
-	if s == "null" {
-		jtime.Time = time.Time{}
-		return
+func (jtime *JiraTime) UnmarshalJSON(b []byte) error {
+	var timestamp int64
+
+	err := json.Unmarshal(b, &timestamp)
+	if err != nil {
+		return err
 	}
-	jtime.Time, err = time.Parse(jiraTime, s)
+
+	jtime.Time = time.UnixMilli(timestamp)
+
 	return nil
 }
 
@@ -76,39 +79,100 @@ type JiraPayload struct {
 	Issue Issue
 }
 
-func JiraHandler(w http.ResponseWriter, r *http.Request) {
+func ExtractIssue(body io.ReadCloser) (error, Issue) {
 	var payload JiraPayload
-	var issue Issue
-	var team string
-	var labels prometheus.Labels
 
-	decoder := json.NewDecoder(r.Body)
+	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&payload)
+
+	if err != nil {
+		return err, Issue{}
+	}
+
+	level.Info(logger).Log(
+		"event", payload.Event,
+	)
+
+	return nil, payload.Issue
+}
+
+func JiraNewTicketHandler(w http.ResponseWriter, r *http.Request) {
+	var labels prometheus.Labels
+	err, issue := ExtractIssue(r.Body)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	issue = payload.Issue
-	team = cat.GetTeamNameByProject(issue.Fields.Project.Key)
-
 	labels = prometheus.Labels{
-		"team":    team,
+		"type":    issue.Fields.IssueType.Name,
 		"project": issue.Fields.Project.Key,
 	}
 
-	prom.IncIncidentsCount(labels)
-	prom.AddIncidentsDuration(labels, issue.GetDuration())
-
 	level.Info(logger).Log(
-		"endpoint", "jira",
+		"endpoint", "jira_new_ticket",
 		"issue_status", issue.Fields.Status.Name,
-		"event", payload.Event,
 		"key", issue.Key,
-		"team", team,
 		"created", issue.Fields.Created,
-		"duration", issue.GetDuration(),
 		"type", issue.Fields.IssueType.Name,
 		"project", issue.Fields.Project.Key,
 	)
+
+	prom.IncNewTicketsCount(labels)
+}
+
+func JiraClosedTicketHandler(w http.ResponseWriter, r *http.Request) {
+	var labels prometheus.Labels
+	err, issue := ExtractIssue(r.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	labels = prometheus.Labels{
+		"type":    issue.Fields.IssueType.Name,
+		"project": issue.Fields.Project.Key,
+	}
+	prom.IncClosedTicketsCount(labels)
+
+	level.Info(logger).Log(
+		"endpoint", "jira_close_ticket",
+		"issue_status", issue.Fields.Status.Name,
+		"key", issue.Key,
+		"created", issue.Fields.Created,
+		"type", issue.Fields.IssueType.Name,
+		"project", issue.Fields.Project.Key,
+	)
+}
+
+func JiraIncidentHandler(w http.ResponseWriter, r *http.Request) {
+	var issue Issue
+	var labels prometheus.Labels
+
+	err, issue := ExtractIssue(r.Body)
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	for _, team := range issue.Fields.Teams {
+		labels = prometheus.Labels{
+			"team": team.Name,
+		}
+
+		prom.IncIncidentsCount(labels)
+		prom.AddIncidentsDuration(labels, issue.GetDuration())
+
+		level.Info(logger).Log(
+			"endpoint", "jira",
+			"issue_status", issue.Fields.Status.Name,
+			"key", issue.Key,
+			"team", team.Name,
+			"created", issue.Fields.Created,
+			"duration", issue.GetDuration(),
+			"type", issue.Fields.IssueType.Name,
+			"project", issue.Fields.Project.Key,
+		)
+	}
 }

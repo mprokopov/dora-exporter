@@ -55,7 +55,7 @@ func main() {
 	github.SetGitHubApi(conf.Github)
 
 	if conf.Catalog.Mode == "backstage" {
-		cat = catalog.NewCatalogFromBacktage(conf.Catalog.Endpoint)
+		cat = catalog.NewCatalogFromBackstage(conf.Catalog.Endpoint, conf.Catalog.Token)
 	} else {
 		cat = catalog.NewCatalogFromYaml(conf.GetTeamsString())
 	}
@@ -74,7 +74,9 @@ func main() {
 	}
 
 	http.HandleFunc("/api/github", HandlerWithSave(fileName, github.GithubAPIHandler))
-	http.HandleFunc("/api/jira", HandlerWithSave(fileName, jira.JiraHandler))
+	http.HandleFunc("/api/jira/incidents/rca", HandlerWithSave(fileName, jira.JiraIncidentHandler))
+	http.HandleFunc("/api/jira/tickets/new", HandlerWithSave(fileName, jira.JiraNewTicketHandler))
+	http.HandleFunc("/api/jira/tickets/close", HandlerWithSave(fileName, jira.JiraClosedTicketHandler))
 	http.Handle("/metrics", promhttp.Handler())
 
 	_ = level.Info(logger).Log("server", "started", "port", conf.Server.Port)

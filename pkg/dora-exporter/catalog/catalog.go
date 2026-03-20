@@ -38,6 +38,7 @@ type TeamsCatalog interface {
 
 type BackstageCatalog struct {
 	Endpoint url.URL
+	Token    string
 }
 
 type BackstageResponse struct {
@@ -80,14 +81,14 @@ func NewCatalogFromYaml(yamlString string) TeamsCatalog {
 	return teams
 }
 
-func NewCatalogFromBacktage(backstageUrl string) TeamsCatalog {
+func NewCatalogFromBackstage(backstageUrl string, token string) TeamsCatalog {
 	url, err := url.Parse(backstageUrl)
 	if err != nil {
 		level.Error(logger).Log(err)
 		panic(1)
 	}
 
-	var backstage = BackstageCatalog{Endpoint: *url}
+	var backstage = BackstageCatalog{Endpoint: *url, Token: token}
 	level.Info(logger).Log("catalog", "backstage", "endpoint", url.String())
 	return backstage
 }
@@ -95,16 +96,19 @@ func NewCatalogFromBacktage(backstageUrl string) TeamsCatalog {
 // GET :base-url/:base-path/entities?filter=metadata.annotations.github.com/project-slug=mprokopov/dora-exporter
 
 func (backstage BackstageCatalog) GetTeamNameByRepository(repository string) string {
-	var filter string
 	var backstageResults []BackstageResponse
-	filter = fmt.Sprintf("metadata.annotations.github.com/project-slug=%s", repository)
+	filter := fmt.Sprintf("metadata.annotations.github.com/project-slug=%s", repository)
 
-	jsonResp, _ := backstage.Fetch(filter)
-
-	err := json.Unmarshal(jsonResp, &backstageResults)
-
+	jsonResp, err := backstage.Fetch(filter)
 	if err != nil {
-		level.Error(logger).Log("catalog", err)
+		level.Error(logger).Log("catalog", "fetch failed", "error", err, "repository", repository)
+		return "Unknown"
+	}
+
+	err = json.Unmarshal(jsonResp, &backstageResults)
+	if err != nil {
+		level.Error(logger).Log("catalog", "unmarshal failed", "error", err, "repository", repository)
+		return "Unknown"
 	}
 
 	if len(backstageResults) == 0 || backstageResults[0].Spec.Owner == "" {
@@ -135,14 +139,26 @@ func (backstage BackstageCatalog) Fetch(filter string) ([]byte, error) {
 	req, err := http.NewRequest(http.MethodGet, uri.String(), http.NoBody)
 	if err != nil {
 		level.Error(logger).Log("catalog", err)
+		return nil, err
+	}
+
+	if backstage.Token != "" {
+		req.Header.Set("Authorization", "Bearer "+backstage.Token)
 	}
 
 	client := http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		level.Error(logger).Log("catalog", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		level.Error(logger).Log("catalog", "unexpected status", "status", resp.StatusCode, "body", string(body))
+		return nil, fmt.Errorf("backstage returned status %d", resp.StatusCode)
+	}
 
 	return io.ReadAll(resp.Body)
 }

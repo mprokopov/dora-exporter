@@ -18,6 +18,8 @@ type Exporter struct {
 	deployments_duration_sum *prometheus.GaugeVec
 	incidents_count          *prometheus.CounterVec
 	incidents_duration_sum   *prometheus.GaugeVec
+	new_tickets_count        *prometheus.CounterVec
+	closed_tickets_count     *prometheus.CounterVec
 }
 
 var logger log.Logger
@@ -41,6 +43,8 @@ func (e *Exporter) Collect(ch chan<- prometheus.Metric) {
 	e.deployments_duration.Collect(ch)
 	e.deployments_duration_sum.Collect(ch)
 	e.incidents_count.Collect(ch)
+	e.new_tickets_count.Collect(ch)
+	e.closed_tickets_count.Collect(ch)
 	e.incidents_duration_sum.Collect(ch)
 }
 
@@ -49,11 +53,14 @@ func (e *Exporter) Describe(ch chan<- *prometheus.Desc) {
 	e.deployments_duration.Describe(ch)
 	e.deployments_duration_sum.Describe(ch)
 	e.incidents_count.Describe(ch)
+	e.new_tickets_count.Describe(ch)
+	e.closed_tickets_count.Describe(ch)
 	e.incidents_duration_sum.Describe(ch)
 }
 
-var JiraLabels = []string{"project", "team"}
-var GithubLabels = []string{"repo", "environment", "team", "status"}
+var JiraLabels = []string{"team"}
+var TicketLabels = []string{"type", "project"}
+var GithubLabels = []string{"repo", "environment", "team", "status", "redeployment"}
 
 func NewExporter() *Exporter {
 	return &Exporter{
@@ -83,6 +90,16 @@ func NewExporter() *Exporter {
 			Name:      "incidents",
 			Help:      "The amount of incidents.",
 		}, JiraLabels),
+		new_tickets_count: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "jira",
+			Name:      "new_tickets",
+			Help:      "The amount of new tickets.",
+		}, TicketLabels),
+		closed_tickets_count: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: "jira",
+			Name:      "closed_tickets",
+			Help:      "The amount of closed tickets.",
+		}, TicketLabels),
 	}
 }
 
@@ -126,6 +143,12 @@ func (e *Exporter) Update(family string, metric *io_prometheus_client.Metric) {
 
 	case "jira_incidents":
 		UpdateCounter(exp.incidents_count, metric)
+
+	case "jira_new_tickets":
+		UpdateCounter(exp.new_tickets_count, metric)
+
+	case "jira_closed_tickets":
+		UpdateCounter(exp.closed_tickets_count, metric)
 
 	case "github_deployments_total":
 		UpdateCounter(exp.deployments_count, metric)
@@ -171,6 +194,16 @@ func IncIncidentsCount(labels prometheus.Labels) {
 func AddIncidentsDuration(labels prometheus.Labels, duration float64) {
 	exp.incidents_duration_sum.With(labels).Add(duration)
 	_ = level.Debug(logger).Log("gauge", "incidents_duration_sum", "action", "set", "value", duration)
+}
+
+func IncNewTicketsCount(labels prometheus.Labels) {
+	exp.new_tickets_count.With(labels).Inc()
+	_ = level.Debug(logger).Log("counter", "new_tickets_count", "action", "inc")
+}
+
+func IncClosedTicketsCount(labels prometheus.Labels) {
+	exp.closed_tickets_count.With(labels).Inc()
+	_ = level.Debug(logger).Log("counter", "closed_tickets_count", "action", "inc")
 }
 
 func IncDeploymentsCount(labels prometheus.Labels) {
