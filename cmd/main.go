@@ -44,7 +44,9 @@ func HandlerWithSave(file string, handler func(w http.ResponseWriter, r *http.Re
 	return func(w http.ResponseWriter, r *http.Request) {
 		handler(w, r)
 
-		prom.SaveMetricsToFile(file)
+		if err := prom.SaveMetricsToFile(file); err != nil {
+			level.Error(logger).Log("metrics", "save", "file", file, "error", err)
+		}
 	}
 }
 
@@ -70,7 +72,9 @@ func main() {
 
 	if err != nil {
 		_ = level.Info(logger).Log("metrics", "loader", "file", fileName, "status", "creating new file")
-		prom.SaveMetricsToFile(fileName)
+		if err := prom.SaveMetricsToFile(fileName); err != nil {
+			level.Error(logger).Log("metrics", "save", "file", fileName, "error", err)
+		}
 	}
 
 	http.HandleFunc("/api/github", HandlerWithSave(fileName, github.GithubAPIHandler))
@@ -82,6 +86,7 @@ func main() {
 	_ = level.Info(logger).Log("server", "started", "port", conf.Server.Port)
 	err = http.ListenAndServe(":"+conf.Server.Port, nil)
 	if err != nil {
-		level.Error(logger).Log(err)
+		level.Error(logger).Log("server", "listen", "error", err)
+		os.Exit(1)
 	}
 }

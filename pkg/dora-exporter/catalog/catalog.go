@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"strings"
 
 	"net/http"
 	"time"
@@ -129,7 +130,7 @@ func (backstage BackstageCatalog) GetTeamNameByProject(project string) string {
 func (backstage BackstageCatalog) Fetch(filter string) ([]byte, error) {
 	var uri url.URL
 	uri = backstage.Endpoint
-	uri.Path = "/api/catalog/entities"
+	uri.Path = strings.TrimRight(uri.Path, "/") + "/api/catalog/entities"
 	q := uri.Query()
 
 	q.Add("filter", filter)

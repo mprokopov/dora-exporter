@@ -47,7 +47,7 @@ func SetLogger(log log.Logger) {
 }
 
 func NewConfigFromFile(file string) *Config {
-	var conf *Config
+	conf := &Config{}
 	conf.Load(file)
 	return conf
 }
@@ -63,6 +63,7 @@ func (c *Config) Load(file string) *Config {
 	err = yaml.Unmarshal(yamlFile, c)
 	if err != nil {
 		level.Error(logger).Log("config", file, "error", err)
+		os.Exit(1)
 	}
 	if c.Github.Token == "" {
 		if os.Getenv("GITHUB_TOKEN") == "" {

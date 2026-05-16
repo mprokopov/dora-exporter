@@ -131,33 +131,41 @@ func UpdateGauge(gauge *prometheus.GaugeVec, metric *io_prometheus_client.Metric
 }
 
 func (e *Exporter) Update(family string, metric *io_prometheus_client.Metric) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	switch family {
 	case "jira_incidents_duration_sum":
-		UpdateGauge(exp.incidents_duration_sum, metric)
+		UpdateGauge(e.incidents_duration_sum, metric)
 
 	case "github_deployments_duration":
-		UpdateGauge(exp.deployments_duration, metric)
+		UpdateGauge(e.deployments_duration, metric)
 
 	case "github_deployments_duration_sum":
-		UpdateGauge(exp.deployments_duration_sum, metric)
+		UpdateGauge(e.deployments_duration_sum, metric)
 
 	case "jira_incidents":
-		UpdateCounter(exp.incidents_count, metric)
+		UpdateCounter(e.incidents_count, metric)
 
 	case "jira_new_tickets":
-		UpdateCounter(exp.new_tickets_count, metric)
+		UpdateCounter(e.new_tickets_count, metric)
 
 	case "jira_closed_tickets":
-		UpdateCounter(exp.closed_tickets_count, metric)
+		UpdateCounter(e.closed_tickets_count, metric)
 
 	case "github_deployments_total":
-		UpdateCounter(exp.deployments_count, metric)
+		UpdateCounter(e.deployments_count, metric)
 	}
 }
 
-func SaveMetricsToFile(file string) {
-	_ = prometheus.WriteToTextfile(file, prometheus.DefaultGatherer)
+func SaveMetricsToFile(file string) error {
+	if err := prometheus.WriteToTextfile(file, prometheus.DefaultGatherer); err != nil {
+		_ = level.Error(logger).Log("metrics", "export_failed", "file", file, "error", err)
+		return err
+	}
+
 	_ = level.Info(logger).Log("metrics", "exported", "file", file)
+	return nil
 }
 
 func LoadMetricsFromFile(file string) error {

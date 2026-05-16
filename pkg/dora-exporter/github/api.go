@@ -53,11 +53,11 @@ func (api GithubApi) Fetch(path string) ([]byte, error) {
 	}
 
 	req, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
-	req.Header.Add("Authorization", "token "+api.Token)
-
 	if err != nil {
 		level.Error(logger).Log(err)
+		return nil, err
 	}
+	req.Header.Add("Authorization", "token "+api.Token)
 
 	client := http.Client{Timeout: 15 * time.Second}
 
@@ -67,9 +67,16 @@ func (api GithubApi) Fetch(path string) ([]byte, error) {
 
 	if err != nil {
 		level.Error(logger).Log(err)
+		return nil, err
 	}
-
 	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		body, _ := io.ReadAll(resp.Body)
+		err := fmt.Errorf("github api returned status %d: %s", resp.StatusCode, string(body))
+		level.Error(logger).Log(err)
+		return nil, err
+	}
 
 	return io.ReadAll(resp.Body)
 }
@@ -93,11 +100,16 @@ type PullRequest struct {
 // https://api.github.com/repos/{{owner}}/{{repo}}/pulls/{{pull_number}}/commits
 func (api GithubApi) PullRequestInfo(repo string, pullRequestNumber string) []PullRequest {
 	var pullRequests []PullRequest
-	resBody, _ := api.Fetch(fmt.Sprintf("/repos/%s/%s/pulls/%s/commits", api.Owner, repo, pullRequestNumber))
-
-	err := json.Unmarshal([]byte(resBody), &pullRequests)
+	resBody, err := api.Fetch(fmt.Sprintf("/repos/%s/%s/pulls/%s/commits", api.Owner, repo, pullRequestNumber))
 	if err != nil {
 		level.Error(logger).Log(err)
+		return pullRequests
+	}
+
+	err = json.Unmarshal(resBody, &pullRequests)
+	if err != nil {
+		level.Error(logger).Log(err)
+		return nil
 	}
 
 	level.Debug(logger).Log("component", "github_api", "repo", repo, "pull_request", pullRequestNumber)
@@ -108,9 +120,13 @@ func (api GithubApi) PullRequestInfo(repo string, pullRequestNumber string) []Pu
 // https://api.github.com/repos/{{owner}}/{{repo}}/git/commits/{{commit_sha}}
 func (api GithubApi) CommitInfo(repo string, sha string) Commit {
 	var commit Commit
-	resBody, _ := api.Fetch(fmt.Sprintf("/repos/%s/%s/git/commits/%s", api.Owner, repo, sha))
+	resBody, err := api.Fetch(fmt.Sprintf("/repos/%s/%s/git/commits/%s", api.Owner, repo, sha))
+	if err != nil {
+		level.Error(logger).Log(err)
+		return commit
+	}
 
-	err := json.Unmarshal([]byte(resBody), &commit)
+	err = json.Unmarshal(resBody, &commit)
 	if err != nil {
 		level.Error(logger).Log(err)
 	}
@@ -145,6 +161,10 @@ func (api GithubApi) FindFirstCommitDate(repo, sha string) time.Time {
 	}
 
 	prInfo := api.PullRequestInfo(repo, prId)
+	if len(prInfo) == 0 {
+		level.Debug(logger).Log("repo", repo, "sha", sha, "PR", prId, "date", "current_commit", "reason", "no_pr_commits")
+		return commit.Author.Date
+	}
 
 	level.Debug(logger).Log("repo", repo, "sha", sha, "PR", prId, "date", "pr_first_commit")
 	return prInfo[0].Commit.Author.Date
