@@ -36,7 +36,11 @@ var logger = log.NewLogfmtLogger(os.Stdout)
 
 func SetupCatalog() catalog.TeamsCatalog {
 	catalog.SetLogger(logger)
-	return catalog.NewCatalogFromYaml(example)
+	service, err := catalog.NewCatalogFromYaml(example)
+	if err != nil {
+		panic(err)
+	}
+	return service
 }
 
 func TestGetCatalogByRepository(t *testing.T) {
@@ -45,7 +49,7 @@ func TestGetCatalogByRepository(t *testing.T) {
 	examples := map[string]string{
 		"mprokopov/provisioner": "Infra",
 		"mprokopov/alfred":      "Risk",
-		"not_found":           "Unknown"}
+		"not_found":             "Unknown"}
 
 	for repo, want := range examples {
 		got := service.GetTeamNameByRepository(repo)

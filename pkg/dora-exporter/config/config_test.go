@@ -16,7 +16,10 @@ func TestNewConfigFromFileAllocatesConfig(t *testing.T) {
 		t.Fatalf("write config: %v", err)
 	}
 
-	conf := NewConfigFromFile(path)
+	conf, err := NewConfigFromFile(path)
+	if err != nil {
+		t.Fatalf("new config: %v", err)
+	}
 	if conf == nil {
 		t.Fatal("config is nil")
 	}

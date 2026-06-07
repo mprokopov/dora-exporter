@@ -54,7 +54,7 @@ func (api GithubApi) Fetch(path string) ([]byte, error) {
 
 	req, err := http.NewRequest(http.MethodGet, url.String(), http.NoBody)
 	if err != nil {
-		level.Error(logger).Log(err)
+		level.Error(logger).Log("component", "github_api", "error", err)
 		return nil, err
 	}
 	req.Header.Add("Authorization", "token "+api.Token)
@@ -66,7 +66,7 @@ func (api GithubApi) Fetch(path string) ([]byte, error) {
 	level.Debug(logger).Log("component", "github_api", "call", url.String())
 
 	if err != nil {
-		level.Error(logger).Log(err)
+		level.Error(logger).Log("component", "github_api", "error", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -102,13 +102,13 @@ func (api GithubApi) PullRequestInfo(repo string, pullRequestNumber string) []Pu
 	var pullRequests []PullRequest
 	resBody, err := api.Fetch(fmt.Sprintf("/repos/%s/%s/pulls/%s/commits", api.Owner, repo, pullRequestNumber))
 	if err != nil {
-		level.Error(logger).Log(err)
+		level.Error(logger).Log("component", "github_api", "error", err)
 		return pullRequests
 	}
 
 	err = json.Unmarshal(resBody, &pullRequests)
 	if err != nil {
-		level.Error(logger).Log(err)
+		level.Error(logger).Log("component", "github_api", "error", err)
 		return nil
 	}
 
@@ -122,13 +122,13 @@ func (api GithubApi) CommitInfo(repo string, sha string) Commit {
 	var commit Commit
 	resBody, err := api.Fetch(fmt.Sprintf("/repos/%s/%s/git/commits/%s", api.Owner, repo, sha))
 	if err != nil {
-		level.Error(logger).Log(err)
+		level.Error(logger).Log("component", "github_api", "error", err)
 		return commit
 	}
 
 	err = json.Unmarshal(resBody, &commit)
 	if err != nil {
-		level.Error(logger).Log(err)
+		level.Error(logger).Log("component", "github_api", "error", err)
 	}
 
 	level.Debug(logger).Log("component", "github_api", "repo", repo, "commit_info", sha)

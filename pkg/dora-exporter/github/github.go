@@ -17,13 +17,13 @@ type Deployment_Status struct {
 }
 
 type Deployment struct {
-	Url             string
-	Id              int
-	Ref             string
-	Sha             string
-	Environment     string
-	Payload         struct {
-	    Redeployment string
+	Url         string
+	Id          int
+	Ref         string
+	Sha         string
+	Environment string
+	Payload     struct {
+		Redeployment string
 	}
 }
 
@@ -45,13 +45,6 @@ type GitHubWebhookPayload struct {
 	Deployment        Deployment
 	Repository        Repository
 	Sender            Sender
-}
-
-var teams catalog.Teams
-
-func SetTeams(t catalog.Teams) {
-	teams = t
-	return
 }
 
 var cat catalog.TeamsCatalog
@@ -89,10 +82,10 @@ func GithubAPIHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	labels := prometheus.Labels{
-		"repo":        payload.Repository.Name,
-		"environment": payload.Deployment.Environment,
-		"team":        cat.GetTeamNameByRepository(payload.Repository.Full_Name),
-		"status":      payload.Deployment_Status.State,
+		"repo":         payload.Repository.Name,
+		"environment":  payload.Deployment.Environment,
+		"team":         cat.GetTeamNameByRepository(payload.Repository.Full_Name),
+		"status":       payload.Deployment_Status.State,
 		"redeployment": payload.Deployment.Payload.Redeployment,
 	}
 
