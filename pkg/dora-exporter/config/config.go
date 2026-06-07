@@ -42,7 +42,6 @@ var logger log.Logger
 
 func SetLogger(log log.Logger) {
 	logger = log
-	return
 }
 
 func NewConfigFromFile(file string) (*Config, error) {

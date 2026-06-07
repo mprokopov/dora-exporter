@@ -9,7 +9,6 @@ import (
 	"github.com/go-kit/log/level"
 
 	"github.com/go-kit/log"
-	"github.com/mprokopov/dora-exporter/pkg/dora-exporter/catalog"
 	prom "github.com/mprokopov/dora-exporter/pkg/dora-exporter/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -18,14 +17,6 @@ var logger log.Logger
 
 func SetLogger(log log.Logger) {
 	logger = log
-	return
-}
-
-var cat catalog.TeamsCatalog
-
-func SetCatalog(catalog catalog.TeamsCatalog) {
-	cat = catalog
-	level.Info(logger).Log("jira", "catalog service set")
 }
 
 // GetDuration returns time difference since time.now and issue.Fields.Created in seconds

@@ -71,7 +71,6 @@ func main() {
 	}
 
 	github.SetCatalog(cat)
-	jira.SetCatalog(cat)
 
 	exp = prom.NewExporter()
 	prom.SetExporter(exp)

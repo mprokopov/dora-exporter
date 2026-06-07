@@ -26,7 +26,6 @@ var logger log.Logger
 
 func SetLogger(log log.Logger) {
 	logger = log
-	return
 }
 
 var exp *Exporter

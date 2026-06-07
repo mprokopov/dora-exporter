@@ -19,7 +19,6 @@ var logger log.Logger
 
 func SetLogger(log log.Logger) {
 	logger = log
-	return
 }
 
 type Team struct {
@@ -128,8 +127,7 @@ func (backstage BackstageCatalog) GetTeamNameByProject(project string) string {
 }
 
 func (backstage BackstageCatalog) Fetch(filter string) ([]byte, error) {
-	var uri url.URL
-	uri = backstage.Endpoint
+	uri := backstage.Endpoint
 	uri.Path = strings.TrimRight(uri.Path, "/") + "/api/catalog/entities"
 	q := uri.Query()
 
