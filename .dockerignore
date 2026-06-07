@@ -1,0 +1,13 @@
+.git
+.github
+.gitignore
+.idea
+.DS_Store
+*.log
+tmp/
+dashboards/
+images/
+README.md
+LICENSE
+*.prom
+dora-exporter

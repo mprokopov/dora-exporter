@@ -1,6 +1,6 @@
 module github.com/mprokopov/dora-exporter
 
-go 1.18
+go 1.24
 
 require (
 	github.com/go-kit/log v0.2.1

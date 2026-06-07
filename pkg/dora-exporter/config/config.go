@@ -1,7 +1,6 @@
 package config
 
 import (
-	"io/ioutil"
 	"os"
 
 	"errors"
@@ -43,33 +42,34 @@ var logger log.Logger
 
 func SetLogger(log log.Logger) {
 	logger = log
-	return
 }
 
-func NewConfigFromFile(file string) *Config {
+func NewConfigFromFile(file string) (*Config, error) {
 	conf := &Config{}
-	conf.Load(file)
-	return conf
+	if err := conf.Load(file); err != nil {
+		return nil, err
+	}
+	return conf, nil
 }
 
-func (c *Config) Load(file string) *Config {
-	yamlFile, err := ioutil.ReadFile(file)
+func (c *Config) Load(file string) error {
+	yamlFile, err := os.ReadFile(file)
 
 	if err != nil {
 		level.Error(logger).Log("config", file, "error", err)
-		os.Exit(1)
+		return err
 	}
 
 	err = yaml.Unmarshal(yamlFile, c)
 	if err != nil {
 		level.Error(logger).Log("config", file, "error", err)
-		os.Exit(1)
+		return err
 	}
 	if c.Github.Token == "" {
 		if os.Getenv("GITHUB_TOKEN") == "" {
-			err := errors.New("No GitHub token found")
+			err := errors.New("no GitHub token found")
 			level.Error(logger).Log("config", file, "github_token", err)
-			os.Exit(1)
+			return err
 		}
 		c.Github.Token = os.Getenv("GITHUB_TOKEN")
 	}
@@ -97,7 +97,7 @@ func (c *Config) Load(file string) *Config {
 	}
 
 	level.Info(logger).Log("config", "finished", "file", file)
-	return c
+	return nil
 }
 
 func (c *Config) GetTeams() catalog.Teams {

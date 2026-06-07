@@ -26,10 +26,14 @@ var logger log.Logger
 
 func SetLogger(log log.Logger) {
 	logger = log
-	return
 }
 
 var exp *Exporter
+
+// saveMu serializes snapshot writes so concurrent webhook handlers cannot
+// race on the same file. WriteToTextfile renames a temp file into place, so
+// combined with this lock the on-disk snapshot is never partially written.
+var saveMu sync.Mutex
 
 func SetExporter(e *Exporter) {
 	exp = e
@@ -159,6 +163,9 @@ func (e *Exporter) Update(family string, metric *io_prometheus_client.Metric) {
 }
 
 func SaveMetricsToFile(file string) error {
+	saveMu.Lock()
+	defer saveMu.Unlock()
+
 	if err := prometheus.WriteToTextfile(file, prometheus.DefaultGatherer); err != nil {
 		_ = level.Error(logger).Log("metrics", "export_failed", "file", file, "error", err)
 		return err

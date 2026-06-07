@@ -28,7 +28,10 @@ func TestBackstageCatalogPreservesBasePath(t *testing.T) {
 	}))
 	defer server.Close()
 
-	service := catalog.NewCatalogFromBackstage(server.URL+"/backstage", "")
+	service, err := catalog.NewCatalogFromBackstage(server.URL+"/backstage", "")
+	if err != nil {
+		t.Fatalf("new backstage catalog: %v", err)
+	}
 	if got := service.GetTeamNameByRepository("mprokopov/dora-exporter"); got != "Platform" {
 		t.Fatalf("team = %q, want Platform", got)
 	}

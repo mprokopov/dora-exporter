@@ -19,7 +19,6 @@ var logger log.Logger
 
 func SetLogger(log log.Logger) {
 	logger = log
-	return
 }
 
 type Team struct {
@@ -71,27 +70,27 @@ func (teams Teams) GetTeamNameByProject(project string) string {
 	return "Unknown"
 }
 
-func NewCatalogFromYaml(yamlString string) TeamsCatalog {
+func NewCatalogFromYaml(yamlString string) (TeamsCatalog, error) {
 	var teams Teams
 	err := yaml.Unmarshal([]byte(yamlString), &teams)
 	if err != nil {
-		level.Error(logger).Log(err)
-		panic(1)
+		level.Error(logger).Log("catalog", "static", "error", err)
+		return nil, err
 	}
 	level.Info(logger).Log("catalog", "static", "teams", len(teams))
-	return teams
+	return teams, nil
 }
 
-func NewCatalogFromBackstage(backstageUrl string, token string) TeamsCatalog {
+func NewCatalogFromBackstage(backstageUrl string, token string) (TeamsCatalog, error) {
 	url, err := url.Parse(backstageUrl)
 	if err != nil {
-		level.Error(logger).Log(err)
-		panic(1)
+		level.Error(logger).Log("catalog", "backstage", "error", err)
+		return nil, err
 	}
 
 	var backstage = BackstageCatalog{Endpoint: *url, Token: token}
 	level.Info(logger).Log("catalog", "backstage", "endpoint", url.String())
-	return backstage
+	return backstage, nil
 }
 
 // GET :base-url/:base-path/entities?filter=metadata.annotations.github.com/project-slug=mprokopov/dora-exporter
@@ -128,8 +127,7 @@ func (backstage BackstageCatalog) GetTeamNameByProject(project string) string {
 }
 
 func (backstage BackstageCatalog) Fetch(filter string) ([]byte, error) {
-	var uri url.URL
-	uri = backstage.Endpoint
+	uri := backstage.Endpoint
 	uri.Path = strings.TrimRight(uri.Path, "/") + "/api/catalog/entities"
 	q := uri.Query()
 
@@ -139,7 +137,7 @@ func (backstage BackstageCatalog) Fetch(filter string) ([]byte, error) {
 
 	req, err := http.NewRequest(http.MethodGet, uri.String(), http.NoBody)
 	if err != nil {
-		level.Error(logger).Log("catalog", err)
+		level.Error(logger).Log("catalog", "request", "error", err)
 		return nil, err
 	}
 
@@ -150,7 +148,7 @@ func (backstage BackstageCatalog) Fetch(filter string) ([]byte, error) {
 	client := http.Client{Timeout: 15 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		level.Error(logger).Log("catalog", err)
+		level.Error(logger).Log("catalog", "fetch", "error", err)
 		return nil, err
 	}
 	defer resp.Body.Close()

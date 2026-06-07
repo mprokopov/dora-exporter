@@ -9,7 +9,6 @@ import (
 	"github.com/go-kit/log/level"
 
 	"github.com/go-kit/log"
-	"github.com/mprokopov/dora-exporter/pkg/dora-exporter/catalog"
 	prom "github.com/mprokopov/dora-exporter/pkg/dora-exporter/prometheus"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -18,14 +17,6 @@ var logger log.Logger
 
 func SetLogger(log log.Logger) {
 	logger = log
-	return
-}
-
-var cat catalog.TeamsCatalog
-
-func SetCatalog(catalog catalog.TeamsCatalog) {
-	cat = catalog
-	level.Info(logger).Log("jira", "catalog service set")
 }
 
 // GetDuration returns time difference since time.now and issue.Fields.Created in seconds
@@ -79,26 +70,26 @@ type JiraPayload struct {
 	Issue Issue
 }
 
-func ExtractIssue(body io.ReadCloser) (error, Issue) {
+func ExtractIssue(body io.ReadCloser) (Issue, error) {
 	var payload JiraPayload
 
 	decoder := json.NewDecoder(body)
 	err := decoder.Decode(&payload)
 
 	if err != nil {
-		return err, Issue{}
+		return Issue{}, err
 	}
 
 	level.Info(logger).Log(
 		"event", payload.Event,
 	)
 
-	return nil, payload.Issue
+	return payload.Issue, nil
 }
 
 func JiraNewTicketHandler(w http.ResponseWriter, r *http.Request) {
 	var labels prometheus.Labels
-	err, issue := ExtractIssue(r.Body)
+	issue, err := ExtractIssue(r.Body)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -124,7 +115,7 @@ func JiraNewTicketHandler(w http.ResponseWriter, r *http.Request) {
 
 func JiraClosedTicketHandler(w http.ResponseWriter, r *http.Request) {
 	var labels prometheus.Labels
-	err, issue := ExtractIssue(r.Body)
+	issue, err := ExtractIssue(r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -146,10 +137,9 @@ func JiraClosedTicketHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func JiraIncidentHandler(w http.ResponseWriter, r *http.Request) {
-	var issue Issue
 	var labels prometheus.Labels
 
-	err, issue := ExtractIssue(r.Body)
+	issue, err := ExtractIssue(r.Body)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)

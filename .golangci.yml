@@ -1,0 +1,16 @@
+# golangci-lint configuration
+# https://golangci-lint.run/usage/configuration/
+
+linters-settings:
+  errcheck:
+    # go-kit's Logger.Log returns an error that is conventionally ignored
+    # (fire-and-forget logging). Excluding it keeps errcheck meaningful for
+    # real error returns (file/JSON/HTTP operations) without the noise.
+    exclude-functions:
+      - (github.com/go-kit/log.Logger).Log
+
+issues:
+  # Report every occurrence rather than capping repeated findings, so CI
+  # surfaces the full picture.
+  max-same-issues: 0
+  max-issues-per-linter: 0

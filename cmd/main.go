@@ -51,19 +51,26 @@ func HandlerWithSave(file string, handler func(w http.ResponseWriter, r *http.Re
 }
 
 func main() {
-	conf.Load(configFile)
+	if err := conf.Load(configFile); err != nil {
+		level.Error(logger).Log("config", "load", "file", configFile, "error", err)
+		os.Exit(1)
+	}
 	fileName = conf.Storage.File.Path
 
 	github.SetGitHubApi(conf.Github)
 
+	var catErr error
 	if conf.Catalog.Mode == "backstage" {
-		cat = catalog.NewCatalogFromBackstage(conf.Catalog.Endpoint, conf.Catalog.Token)
+		cat, catErr = catalog.NewCatalogFromBackstage(conf.Catalog.Endpoint, conf.Catalog.Token)
 	} else {
-		cat = catalog.NewCatalogFromYaml(conf.GetTeamsString())
+		cat, catErr = catalog.NewCatalogFromYaml(conf.GetTeamsString())
+	}
+	if catErr != nil {
+		level.Error(logger).Log("catalog", "init", "mode", conf.Catalog.Mode, "error", catErr)
+		os.Exit(1)
 	}
 
 	github.SetCatalog(cat)
-	jira.SetCatalog(cat)
 
 	exp = prom.NewExporter()
 	prom.SetExporter(exp)
