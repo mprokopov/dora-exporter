@@ -38,14 +38,8 @@ jobs:
         run: |
           go build -o dora-exporter-linux-arm64 cmd/main.go
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          files: |
-            dora-exporter-linux-amd64
-            dora-exporter-linux-arm64
-            configs/config.yml.dist
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -70,3 +64,12 @@ jobs:
           tags: |
             ghcr.io/mprokopov/dora-exporter:${{ steps.meta.outputs.version }}
             ghcr.io/mprokopov/dora-exporter:latest
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            dora-exporter-linux-amd64
+            dora-exporter-linux-arm64
+            configs/config.yml.dist

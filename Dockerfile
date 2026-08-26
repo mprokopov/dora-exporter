@@ -1,4 +1,6 @@
 FROM golang:1.24-alpine AS builder
+# The Alpine variant of the Go image ships without make, unlike the Debian one.
+RUN apk add --no-cache make
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
