@@ -97,42 +97,43 @@ type PullRequest struct {
 }
 
 // https://api.github.com/repos/{{owner}}/{{repo}}/pulls/{{pull_number}}/commits
-func (api GithubApi) PullRequestInfo(repo string, pullRequestNumber string) []PullRequest {
+func (api GithubApi) PullRequestInfo(repo string, pullRequestNumber string) ([]PullRequest, error) {
 	var pullRequests []PullRequest
 	resBody, err := api.Fetch(fmt.Sprintf("/repos/%s/%s/pulls/%s/commits", api.Owner, repo, pullRequestNumber))
 	if err != nil {
 		level.Error(logger).Log("component", "github_api", "error", err)
-		return pullRequests
+		return nil, err
 	}
 
 	err = json.Unmarshal(resBody, &pullRequests)
 	if err != nil {
 		level.Error(logger).Log("component", "github_api", "error", err)
-		return nil
+		return nil, err
 	}
 
 	level.Debug(logger).Log("component", "github_api", "repo", repo, "pull_request", pullRequestNumber)
 
-	return pullRequests
+	return pullRequests, nil
 }
 
 // https://api.github.com/repos/{{owner}}/{{repo}}/git/commits/{{commit_sha}}
-func (api GithubApi) CommitInfo(repo string, sha string) Commit {
+func (api GithubApi) CommitInfo(repo string, sha string) (Commit, error) {
 	var commit Commit
 	resBody, err := api.Fetch(fmt.Sprintf("/repos/%s/%s/git/commits/%s", api.Owner, repo, sha))
 	if err != nil {
 		level.Error(logger).Log("component", "github_api", "error", err)
-		return commit
+		return Commit{}, err
 	}
 
 	err = json.Unmarshal(resBody, &commit)
 	if err != nil {
 		level.Error(logger).Log("component", "github_api", "error", err)
+		return Commit{}, err
 	}
 
 	level.Debug(logger).Log("component", "github_api", "repo", repo, "commit_info", sha)
 
-	return commit
+	return commit, nil
 }
 
 // BETA-136: ticket notification log no exception (#12)
@@ -148,23 +149,45 @@ func (commit Commit) PullRequestId() (string, error) {
 	return "", errors.New("commit: no PR")
 }
 
-func (api GithubApi) FindFirstCommitDate(repo, sha string) time.Time {
-	commit := api.CommitInfo(repo, sha)
-	prId, err := commit.PullRequestId()
+// ErrNoCommitDate reports that GitHub answered without an authoring date. The
+// zero time.Time it leaves behind turns into a ~292 year lead time downstream,
+// so it is rejected here rather than measured.
+var ErrNoCommitDate = errors.New("commit: no author date")
 
+// FindFirstCommitDate returns the authoring date the lead time is measured
+// from. Every failure to establish that date is returned as an error: callers
+// must not fall back to the zero time.
+func (api GithubApi) FindFirstCommitDate(repo, sha string) (time.Time, error) {
+	commit, err := api.CommitInfo(repo, sha)
 	if err != nil {
-
-		level.Debug(logger).Log("repo", repo, "sha", sha, "date", "current_commit")
-		// no pull request associated
-		return commit.Author.Date
+		return time.Time{}, err
 	}
 
-	prInfo := api.PullRequestInfo(repo, prId)
+	prId, prErr := commit.PullRequestId()
+	if prErr != nil {
+		level.Debug(logger).Log("repo", repo, "sha", sha, "date", "current_commit")
+		// no pull request associated
+		return validCommitDate(commit.Author.Date)
+	}
+
+	prInfo, err := api.PullRequestInfo(repo, prId)
+	if err != nil {
+		return time.Time{}, err
+	}
 	if len(prInfo) == 0 {
 		level.Debug(logger).Log("repo", repo, "sha", sha, "PR", prId, "date", "current_commit", "reason", "no_pr_commits")
-		return commit.Author.Date
+		return validCommitDate(commit.Author.Date)
 	}
 
 	level.Debug(logger).Log("repo", repo, "sha", sha, "PR", prId, "date", "pr_first_commit")
-	return prInfo[0].Commit.Author.Date
+	return validCommitDate(prInfo[0].Commit.Author.Date)
+}
+
+// validCommitDate rejects the zero time a well-formed response with a missing
+// or empty author date unmarshals into.
+func validCommitDate(date time.Time) (time.Time, error) {
+	if date.IsZero() {
+		return time.Time{}, ErrNoCommitDate
+	}
+	return date, nil
 }

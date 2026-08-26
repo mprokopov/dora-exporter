@@ -54,19 +54,23 @@ func SetCatalog(catalog catalog.TeamsCatalog) {
 	level.Info(logger).Log("github", "catalog service set")
 }
 
-// GetPullRequestDuration returns duration between current time
-// and first commit found either from commit itself or from associated PR
-func (payload GitHubWebhookPayload) GetCommitDuration() float64 {
-	firstCommitDate := githubApi.FindFirstCommitDate(payload.Repository.Name, payload.Deployment.Sha)
+// GetCommitDuration returns duration between current time
+// and first commit found either from commit itself or from associated PR.
+// It returns an error when that first commit date could not be established,
+// so callers can skip the event instead of recording a bogus lead time.
+func (payload GitHubWebhookPayload) GetCommitDuration() (float64, error) {
+	firstCommitDate, err := githubApi.FindFirstCommitDate(payload.Repository.Name, payload.Deployment.Sha)
+	if err != nil {
+		return 0, err
+	}
 
 	level.Debug(logger).Log("commit_duration", time.Since(firstCommitDate))
 
-	return time.Since(firstCommitDate).Seconds()
+	return time.Since(firstCommitDate).Seconds(), nil
 }
 
 func GithubAPIHandler(w http.ResponseWriter, r *http.Request) {
 	var payload GitHubWebhookPayload
-	var duration float64
 
 	if r.Header.Get("X-GitHub-Event") != "deployment_status" {
 		w.WriteHeader(202)
@@ -89,7 +93,20 @@ func GithubAPIHandler(w http.ResponseWriter, r *http.Request) {
 		"redeployment": payload.Deployment.Payload.Redeployment,
 	}
 
-	duration = payload.GetCommitDuration()
+	// A GitHub API failure leaves the lead time unknown. Record nothing and
+	// fail the delivery so it can be redelivered, rather than poisoning the
+	// duration gauge and its running sum with a value we cannot compute.
+	duration, err := payload.GetCommitDuration()
+	if err != nil {
+		level.Error(logger).Log(
+			"endpoint", "github",
+			"repository", labels["repo"],
+			"sha", payload.Deployment.Sha,
+			"metrics", "skipped",
+			"error", err)
+		http.Error(w, "github api lookup failed", http.StatusBadGateway)
+		return
+	}
 
 	prom.IncDeploymentsCount(labels)
 	prom.AddDeploymentsDuration(labels, duration)
