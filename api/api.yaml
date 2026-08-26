@@ -17,6 +17,11 @@ paths:
       responses:
         "200":
           description: Metrics successfully saved
+        "502":
+          description: >-
+            The GitHub API lookup for the deployment's first commit failed, so
+            the lead time is unknown. No metrics were recorded; the delivery can
+            be redelivered.
   /api/jira:
     post:
       summary: Jira Incident webhook

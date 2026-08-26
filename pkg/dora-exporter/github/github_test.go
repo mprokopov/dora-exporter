@@ -54,7 +54,11 @@ func TestFindFirstCommitDate(t *testing.T) {
 	for _, example := range examples {
 		want, _ := time.Parse(timeFormat, example.Date)
 
-		get := api.FindFirstCommitDate(example.Repo, example.CommitId)
+		get, err := api.FindFirstCommitDate(example.Repo, example.CommitId)
+		if err != nil {
+			t.Errorf("FindFirstCommitDate(%s, %s): %v", example.Repo, example.CommitId, err)
+			continue
+		}
 
 		if want != get {
 			t.Errorf("Commit date %s doesn't match %s", get, want)
