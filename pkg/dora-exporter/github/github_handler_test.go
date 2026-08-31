@@ -41,7 +41,7 @@ func newHandlerFixture(t *testing.T, stub http.HandlerFunc) *prometheus.Registry
 	if err != nil {
 		t.Fatalf("parse server url: %v", err)
 	}
-	githubApi = GithubApi{Owner: "mprokopov", BaseUrl: *baseURL}
+	githubApi = GithubApi{BaseUrl: *baseURL}
 
 	exporter := prom.NewExporter()
 	prom.SetExporter(exporter)
@@ -104,18 +104,19 @@ func assertNoDeploymentMetrics(t *testing.T, values map[string]float64) {
 
 // Positive control: without it, every "no metrics were written" case below
 // would pass just as happily against a handler that writes nothing at all.
-func TestGithubAPIHandlerRecordsDurationWhenCommitLookupSucceeds(t *testing.T) {
+func TestGithubAPIHandlerUsesPayloadRepositoryOwnerAndRecordsDuration(t *testing.T) {
 	commitDate := time.Now().Add(-2 * time.Hour).UTC()
+	var requestedPath string
 
 	registry := newHandlerFixture(t, func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != commitPath {
-			http.NotFound(w, r)
-			return
-		}
+		requestedPath = r.URL.Path
 		fmt.Fprintf(w, `{"Author":{"Date":%q},"Message":"fix bug"}`, commitDate.Format(time.RFC3339))
 	})
 
 	recorder, values := postDeploymentStatus(t, registry)
+	if requestedPath != commitPath {
+		t.Fatalf("GitHub API path = %q, want %q", requestedPath, commitPath)
+	}
 	if recorder.Code != http.StatusOK {
 		t.Fatalf("status = %d, want %d", recorder.Code, http.StatusOK)
 	}

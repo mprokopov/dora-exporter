@@ -18,6 +18,7 @@ teams:
 
 # Used to query extra information about a commit or pull request
 github:
+  # Optional fallback for API calls made with a bare repository name.
   owner: org
   token: gh_token_here
 
