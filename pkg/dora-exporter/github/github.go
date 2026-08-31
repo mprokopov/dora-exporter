@@ -57,7 +57,7 @@ func SetCatalog(catalog catalog.TeamsCatalog) {
 // GetPullRequestDuration returns duration between current time
 // and first commit found either from commit itself or from associated PR
 func (payload GitHubWebhookPayload) GetCommitDuration() float64 {
-	firstCommitDate := githubApi.FindFirstCommitDate(payload.Repository.Name, payload.Deployment.Sha)
+	firstCommitDate := githubApi.FindFirstCommitDate(payload.Repository.Full_Name, payload.Deployment.Sha)
 
 	level.Debug(logger).Log("commit_duration", time.Since(firstCommitDate))
 

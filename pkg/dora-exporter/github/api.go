@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/go-kit/log"
@@ -99,7 +100,11 @@ type PullRequest struct {
 // https://api.github.com/repos/{{owner}}/{{repo}}/pulls/{{pull_number}}/commits
 func (api GithubApi) PullRequestInfo(repo string, pullRequestNumber string) []PullRequest {
 	var pullRequests []PullRequest
-	resBody, err := api.Fetch(fmt.Sprintf("/repos/%s/%s/pulls/%s/commits", api.Owner, repo, pullRequestNumber))
+	fullRepo := repo
+	if !strings.Contains(repo, "/") {
+		fullRepo = fmt.Sprintf("%s/%s", api.Owner, repo)
+	}
+	resBody, err := api.Fetch(fmt.Sprintf("/repos/%s/pulls/%s/commits", fullRepo, pullRequestNumber))
 	if err != nil {
 		level.Error(logger).Log("component", "github_api", "error", err)
 		return pullRequests
@@ -119,7 +124,11 @@ func (api GithubApi) PullRequestInfo(repo string, pullRequestNumber string) []Pu
 // https://api.github.com/repos/{{owner}}/{{repo}}/git/commits/{{commit_sha}}
 func (api GithubApi) CommitInfo(repo string, sha string) Commit {
 	var commit Commit
-	resBody, err := api.Fetch(fmt.Sprintf("/repos/%s/%s/git/commits/%s", api.Owner, repo, sha))
+	fullRepo := repo
+	if !strings.Contains(repo, "/") {
+		fullRepo = fmt.Sprintf("%s/%s", api.Owner, repo)
+	}
+	resBody, err := api.Fetch(fmt.Sprintf("/repos/%s/git/commits/%s", fullRepo, sha))
 	if err != nil {
 		level.Error(logger).Log("component", "github_api", "error", err)
 		return commit
