@@ -235,6 +235,10 @@ dora-exporter -config.file=config.yml
 Required environment variables:
 - `GITHUB_TOKEN`: GitHub API token with repository access
 
+The webhook payload's `repository.full_name` supplies the repository owner for
+GitHub API lookups. The `github.owner` configuration setting is optional and is
+used only as a fallback when a caller supplies a bare repository name.
+
 ## Metrics Storage
 The exporter persists metrics in Prometheus format between restarts. Configure the storage location:
 

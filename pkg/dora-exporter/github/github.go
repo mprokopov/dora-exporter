@@ -59,7 +59,7 @@ func SetCatalog(catalog catalog.TeamsCatalog) {
 // It returns an error when that first commit date could not be established,
 // so callers can skip the event instead of recording a bogus lead time.
 func (payload GitHubWebhookPayload) GetCommitDuration() (float64, error) {
-	firstCommitDate, err := githubApi.FindFirstCommitDate(payload.Repository.Name, payload.Deployment.Sha)
+	firstCommitDate, err := githubApi.FindFirstCommitDate(payload.Repository.Full_Name, payload.Deployment.Sha)
 	if err != nil {
 		return 0, err
 	}
