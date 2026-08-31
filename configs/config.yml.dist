@@ -18,7 +18,7 @@ teams:
 
 # Used to query extra information about a commit or pull request
 github:
-  owner: org
+  owner: org # Optional. Used as a fallback if the webhook payload does not provide a full repository name.
   token: gh_token_here
 
 server:

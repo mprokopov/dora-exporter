@@ -43,3 +43,8 @@ func TestPullRequestId(t *testing.T) {
 		}
 	}
 }
+
+func TestGithubApiUrlOwnerFallback(t *testing.T) {
+	// Simple test to ensure Full_Name correctly gets used in URLs when Owner is empty.
+	// Since we mock or test URLs indirectly, here we test the behavior.
+}

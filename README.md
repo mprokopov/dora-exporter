@@ -89,7 +89,7 @@ Configuration file location can be specified using command line flag -config.fil
 dora-exporter -config.file=config.yml
 ```
 
-GitHub token is required to query information about the deployment and commit, so we expect the GITHUB_TOKEN environment variable to contain valid token. See [Generate GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) for details.
+GitHub token is required to query information about the deployment and commit, so we expect the GITHUB_TOKEN environment variable to contain valid token. See [Generate GitHub token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) for details. The repository owner is extracted directly from the deployment webhook payloads.
 
 ## Snapshot path
 
